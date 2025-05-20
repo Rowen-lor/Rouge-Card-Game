@@ -27,6 +27,23 @@ GAME_STATE = {
     'GAME_OVER': 3
 }
 
+# 资源路径
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), 'assets')
+CHARACTERS_DIR = os.path.join(ASSETS_DIR, 'characters')
+MONSTERS_DIR = os.path.join(ASSETS_DIR, 'monsters')
+BACKGROUNDS_DIR = os.path.join(ASSETS_DIR, 'backgrounds')
+
+# 加载图片函数
+def load_image(path, size=None):
+    try:
+        image = pygame.image.load(path)
+        if size:
+            image = pygame.transform.scale(image, size)
+        return image
+    except:
+        print(f"无法加载图片: {path}")
+        return None
+
 # 字体设置
 def get_font(size):
     try:
@@ -47,24 +64,36 @@ class Character:
         self.width = 200
         self.height = 300
         self.selected = False
+        # 加载角色图片
+        self.image = load_image(os.path.join(CHARACTERS_DIR, f"{name.lower()}.png"), (self.width, self.height))
 
     def draw(self, screen, x, y):
         color = GREEN if self.selected else WHITE
         pygame.draw.rect(screen, color, (x, y, self.width, self.height))
         pygame.draw.rect(screen, BLACK, (x, y, self.width, self.height), 2)
         
-        font = get_font(24)
-        name_text = font.render(self.name, True, BLACK)
-        health_text = font.render(f"生命: {self.health}", True, BLACK)
-        attack_text = font.render(f"攻击: {self.attack}", True, BLACK)
-        defense_text = font.render(f"防御: {self.defense}", True, BLACK)
-        desc_text = font.render(self.description, True, BLACK)
+        # 绘制角色图片
+        if self.image:
+            screen.blit(self.image, (x, y))
         
-        screen.blit(name_text, (x + 10, y + 10))
-        screen.blit(health_text, (x + 10, y + 40))
-        screen.blit(attack_text, (x + 10, y + 70))
-        screen.blit(defense_text, (x + 10, y + 100))
-        screen.blit(desc_text, (x + 10, y + 130))
+        font = get_font(24)
+        
+        # 创建带描边的文字
+        def draw_text_with_outline(text, pos, color=BLACK, outline_color=WHITE):
+            # 绘制描边
+            for dx, dy in [(-1,-1), (-1,1), (1,-1), (1,1)]:
+                outline = font.render(text, True, outline_color)
+                screen.blit(outline, (pos[0] + dx, pos[1] + dy))
+            # 绘制主文字
+            text_surface = font.render(text, True, color)
+            screen.blit(text_surface, pos)
+        
+        # 绘制带描边的文字
+        draw_text_with_outline(self.name, (x + 10, y + 10))
+        draw_text_with_outline(f"生命: {self.health}", (x + 10, y + 40))
+        draw_text_with_outline(f"攻击: {self.attack}", (x + 10, y + 70))
+        draw_text_with_outline(f"防御: {self.defense}", (x + 10, y + 100))
+        draw_text_with_outline(self.description, (x + 10, y + 130))
 
 class Monster:
     def __init__(self, name, health, attack, defense):
@@ -77,21 +106,34 @@ class Monster:
         self.height = 200
         self.frozen = False
         self.frozen_duration = 0
+        # 加载怪物图片
+        self.image = load_image(os.path.join(MONSTERS_DIR, f"{name.lower()}.png"), (self.width, self.height))
 
     def draw(self, screen, x, y):
         pygame.draw.rect(screen, RED, (x, y, self.width, self.height))
         pygame.draw.rect(screen, BLACK, (x, y, self.width, self.height), 2)
         
-        font = get_font(24)
-        name_text = font.render(self.name, True, BLACK)
-        health_text = font.render(f"生命: {self.health}/{self.max_health}", True, BLACK)
-        attack_text = font.render(f"攻击: {self.attack}", True, BLACK)
-        defense_text = font.render(f"防御: {self.defense}", True, BLACK)
+        # 绘制怪物图片
+        if self.image:
+            screen.blit(self.image, (x, y))
         
-        screen.blit(name_text, (x + 10, y + 10))
-        screen.blit(health_text, (x + 10, y + 40))
-        screen.blit(attack_text, (x + 10, y + 70))
-        screen.blit(defense_text, (x + 10, y + 100))
+        font = get_font(24)
+        
+        # 创建带描边的文字
+        def draw_text_with_outline(text, pos, color=BLACK, outline_color=WHITE):
+            # 绘制描边
+            for dx, dy in [(-1,-1), (-1,1), (1,-1), (1,1)]:
+                outline = font.render(text, True, outline_color)
+                screen.blit(outline, (pos[0] + dx, pos[1] + dy))
+            # 绘制主文字
+            text_surface = font.render(text, True, color)
+            screen.blit(text_surface, pos)
+            
+        # 使用带描边的文字渲染方法
+        draw_text_with_outline(self.name, (x + 10, y + 10))
+        draw_text_with_outline(f"生命: {self.health}/{self.max_health}", (x + 10, y + 40))
+        draw_text_with_outline(f"攻击: {self.attack}", (x + 10, y + 70))
+        draw_text_with_outline(f"防御: {self.defense}", (x + 10, y + 100))
 
     def take_damage(self, damage):
         actual_damage = max(1, damage - self.defense)
@@ -111,8 +153,8 @@ class Monster:
 class Player:
     def __init__(self, character=None):
         self.character = character
-        self.max_health = character.max_health if character else 100
-        self.health = character.health if character else 100
+        self.max_health = character.max_health if character else 2000 # 默认最大生命值提高20倍
+        self.health = character.health if character else 2000      # 默认当前生命值提高20倍
         self.attack = character.attack if character else 10
         self.defense = character.defense if character else 5
         self.gold = 50
@@ -259,23 +301,36 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
         
+        # 加载背景图片
+        self.backgrounds = {
+            'menu': load_image(os.path.join(BACKGROUNDS_DIR, 'menu.jpg'), (SCREEN_WIDTH, SCREEN_HEIGHT)),
+            'battle': load_image(os.path.join(BACKGROUNDS_DIR, 'battle.jpg'), (SCREEN_WIDTH, SCREEN_HEIGHT)),
+            'buff': load_image(os.path.join(BACKGROUNDS_DIR, 'buff.jpg'), (SCREEN_WIDTH, SCREEN_HEIGHT)),
+            'game_over': load_image(os.path.join(BACKGROUNDS_DIR, 'game_over.jpg'), (SCREEN_WIDTH, SCREEN_HEIGHT)) # 新增游戏结束背景
+        }
+        
         # 游戏状态
         self.game_state = GAME_STATE['SELECT_CHARACTER']
         self.player = None
         self.monster = None
-        self.player_hand = []
-        self.scratch_cards = []
         self.characters = [
-            Character("战士", 120, 15, 8, "高生命值，中等攻击"),
-            Character("法师", 80, 20, 5, "高攻击，低防御"),
-            Character("游侠", 100, 12, 10, "平衡型角色")
+            Character("战士", 2400, 15, 8, "高生命值，中等攻击"), # 120 * 20
+            Character("法师", 1600, 20, 5, "高攻击，低防御"),   # 80 * 20
+            Character("游侠", 2000, 12, 10, "平衡型角色")     # 100 * 20
         ]
         self.current_character = None
         self.battle_round = 0
         self.player_turn = True
+        self.goblins_defeated = 0  # 哥布林击杀计数器
         
-        # 抽卡按钮
-        self.draw_card_button = pygame.Rect(SCREEN_WIDTH - 150, 400, 120, 40)
+        # 定义事件按钮
+        self.event_buttons = {
+            'risk': pygame.Rect(50, 400, 120, 40),      # 风险型
+            'balance': pygame.Rect(190, 400, 120, 40),  # 均衡型
+            'safe': pygame.Rect(330, 400, 120, 40),     # 稳健型
+            'all_in': pygame.Rect(470, 400, 120, 40),   # 梭哈
+            'scratch': pygame.Rect(610, 400, 120, 40)   # 刮痧
+        }
         
         # 增益效果卡牌
         self.buff_cards = [
@@ -283,60 +338,19 @@ class Game:
             Card("防御提升", 0, 0, 0, "buff", "防御力+2"),
             Card("生命恢复", 0, 0, 0, "buff", "恢复20点生命")
         ]
+        
+        # 游戏结束界面的重新开始按钮
+        self.restart_button = pygame.Rect(SCREEN_WIDTH // 2 - 75, SCREEN_HEIGHT // 2 + 50, 150, 50)
 
     def create_monster(self):
-        return Monster("哥布林", 50, 8, 3)
+        # 哥布林血量随击杀数增加，基础50，每击杀一只+50
+        monster_health = 50 + (self.goblins_defeated * 50)
+        return Monster("哥布林", monster_health, 8, 3)
 
-    def create_initial_cards(self):
-        # 创建初始卡牌
-        self.player_hand = [
-            Card("普通攻击", 5, 0, 1, "normal"),
-            Card("普通攻击", 5, 0, 1, "normal"),
-            Card("重击", 10, 0, 2, "normal"),
-            Card("雷击", 5, 0, 3, "skill", "后续2回合+3伤害"),
-            Card("冰冻", 0, 0, 3, "skill", "怪物停止1回合")
-        ]
-        
-        # 创建刮刮卡
-        if self.player:  # 确保玩家已经创建
-            for i in range(3):
-                self.scratch_cards.append(ScratchCard(50 + i * 200, 400, self.player))
-
-    def draw_card(self):
-        # 随机生成一张新卡牌
-        rand = random.random() * self.player.luck
-        if rand < 0.1:  # 10% 概率获得技能卡
-            if random.random() < 0.5:  # 50% 概率获得雷属性
-                return Card("雷击", 5, 0, 3, "skill", "后续2回合+3伤害")
-            else:  # 50% 概率获得冰属性
-                return Card("冰冻", 0, 0, 3, "skill", "怪物停止1回合")
-        elif rand < 0.3:  # 20% 概率获得重击
-            return Card("重击", 10, 0, 2, "normal")
-        else:  # 40% 概率获得普通攻击
-            return Card("普通攻击", 5, 0, 1, "normal")
-
-    def handle_events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if self.game_state == GAME_STATE['SELECT_CHARACTER']:
-                    self.handle_character_selection(event.pos)
-                elif self.game_state == GAME_STATE['BATTLE']:
-                    # 检查是否点击抽卡按钮
-                    if self.draw_card_button.collidepoint(event.pos):
-                        new_card = self.draw_card()
-                        self.player_hand.append(new_card)
-                    else:
-                        self.handle_battle_events(event.pos)
-                elif self.game_state == GAME_STATE['BUFF_SELECTION']:
-                    self.handle_buff_selection(event.pos)
-            elif event.type == pygame.MOUSEBUTTONUP:
-                if self.game_state == GAME_STATE['BATTLE'] and self.player.dragging_card:
-                    self.handle_card_drop(event.pos)
-            elif event.type == pygame.MOUSEMOTION:
-                if self.game_state == GAME_STATE['BATTLE'] and self.player.dragging_card:
-                    self.player.drag_start_pos = event.pos
+    def start_battle(self):
+        self.monster = self.create_monster()
+        self.battle_round = 1
+        self.player_turn = True
 
     def handle_character_selection(self, pos):
         for i, character in enumerate(self.characters):
@@ -345,19 +359,47 @@ class Game:
             if x <= pos[0] <= x + character.width and y <= pos[1] <= y + character.height:
                 self.current_character = character
                 self.player = Player(character)
+                self.goblins_defeated = 0 # 新游戏开始，重置击杀计数
                 self.game_state = GAME_STATE['BATTLE']
                 self.start_battle()
 
     def handle_battle_events(self, pos):
         if self.player_turn:
-            # 处理卡牌选择
-            for i, card in enumerate(self.player_hand):
-                card_x = 50 + i * 120
-                card_y = 400
-                if card_x <= pos[0] <= card_x + card.width and card_y <= pos[1] <= card_y + card.height:
-                    self.player.dragging_card = card
-                    self.player.drag_start_pos = pos
+            # 检查是否点击了事件按钮
+            for event_type, button in self.event_buttons.items():
+                if button.collidepoint(pos):
+                    self.trigger_event(event_type)
+                    self.player_turn = False
                     break
+
+    def trigger_event(self, event_type):
+        if event_type == 'risk':
+            # 风险型：75%概率扣30血，25%概率怪物扣50血
+            if random.random() < 0.75:
+                self.player.health = max(0, self.player.health - 30)
+            else:
+                self.monster.take_damage(50)
+        elif event_type == 'balance':
+            # 均衡型：50%概率扣20血，50%概率怪物扣20血
+            if random.random() < 0.5:
+                self.player.health = max(0, self.player.health - 20)
+            else:
+                self.monster.take_damage(20)
+        elif event_type == 'safe':
+            # 稳健型：25%概率扣10血，75%概率怪物扣10血
+            if random.random() < 0.25:
+                self.player.health = max(0, self.player.health - 10)
+            else:
+                self.monster.take_damage(10)
+        elif event_type == 'all_in':
+            # 梭哈：90%概率扣50血，10%概率怪物扣100血
+            if random.random() < 0.9:
+                self.player.health = max(0, self.player.health - 50)
+            else:
+                self.monster.take_damage(100)
+        elif event_type == 'scratch':
+            # 刮痧：100%概率怪物扣1血
+            self.monster.take_damage(1)
 
     def handle_card_drop(self, pos):
         if self.player.dragging_card:
@@ -381,12 +423,6 @@ class Game:
             self.player.dragging_card = None
             self.player.drag_start_pos = None
 
-    def start_battle(self):
-        self.monster = self.create_monster()
-        self.battle_round = 1
-        self.player_turn = True
-        self.create_initial_cards()  # 在玩家创建后创建卡牌
-
     def handle_buff_selection(self, pos):
         # 处理增益卡牌选择
         for i, card in enumerate(self.buff_cards):
@@ -404,21 +440,71 @@ class Game:
                 self.game_state = GAME_STATE['BATTLE']
                 self.start_battle()
 
+    def restart_game(self):
+        self.game_state = GAME_STATE['SELECT_CHARACTER']
+        self.player = None
+        self.monster = None
+        self.current_character = None
+        self.battle_round = 0
+        self.player_turn = True
+        # goblins_defeated 会在选择角色时重置
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if self.game_state == GAME_STATE['SELECT_CHARACTER']:
+                    self.handle_character_selection(event.pos)
+                elif self.game_state == GAME_STATE['BATTLE']:
+                    self.handle_battle_events(event.pos)
+                elif self.game_state == GAME_STATE['BUFF_SELECTION']:
+                    self.handle_buff_selection(event.pos)
+                elif self.game_state == GAME_STATE['GAME_OVER']:
+                    if self.restart_button.collidepoint(event.pos):
+                        self.restart_game()
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if self.game_state == GAME_STATE['BATTLE'] and hasattr(self.player, 'dragging_card') and self.player.dragging_card:
+                    self.handle_card_drop(event.pos) # 虽然卡牌移除了，但以防万一保留调用
+            elif event.type == pygame.MOUSEMOTION:
+                if self.game_state == GAME_STATE['BATTLE'] and hasattr(self.player, 'dragging_card') and self.player.dragging_card:
+                    self.player.drag_start_pos = event.pos
+
     def update(self):
         if self.game_state == GAME_STATE['BATTLE']:
             if not self.player_turn and self.monster:
                 # 怪物回合
-                damage = self.monster.attack_player(self.player)
+                if not self.monster.frozen: # 确保怪物没被冰冻
+                    damage = self.monster.attack_player(self.player)
+                else:
+                    self.monster.frozen_duration -=1
+                    if self.monster.frozen_duration <= 0:
+                        self.monster.frozen = False
                 self.player_turn = True
                 
                 # 检查战斗是否结束
                 if self.player.health <= 0:
                     self.game_state = GAME_STATE['GAME_OVER']
                 elif self.monster.health <= 0:
+                    self.goblins_defeated += 1 # 击杀数增加
                     self.game_state = GAME_STATE['BUFF_SELECTION']
 
     def draw(self):
-        self.screen.fill(WHITE)
+        # 绘制背景
+        current_bg_key = 'menu' # 默认背景
+        if self.game_state == GAME_STATE['SELECT_CHARACTER']:
+            current_bg_key = 'menu'
+        elif self.game_state == GAME_STATE['BATTLE']:
+            current_bg_key = 'battle'
+        elif self.game_state == GAME_STATE['BUFF_SELECTION']:
+            current_bg_key = 'buff'
+        elif self.game_state == GAME_STATE['GAME_OVER']:
+            current_bg_key = 'game_over'
+            
+        if self.backgrounds.get(current_bg_key) and self.backgrounds[current_bg_key]:
+            self.screen.blit(self.backgrounds[current_bg_key], (0,0))
+        else:
+            self.screen.fill(WHITE) # 图片不存在则填充白色
         
         if self.game_state == GAME_STATE['SELECT_CHARACTER']:
             self.draw_character_selection()
@@ -434,68 +520,146 @@ class Game:
     def draw_character_selection(self):
         font = get_font(36)
         title = font.render("选择你的角色", True, BLACK)
-        self.screen.blit(title, (SCREEN_WIDTH//2 - 100, 50))
+        # 添加标题背景
+        title_bg = pygame.Surface((title.get_width() + 20, title.get_height() + 10))
+        title_bg.fill(WHITE)
+        title_bg.set_alpha(200)  # 设置半透明
+        self.screen.blit(title_bg, (SCREEN_WIDTH//2 - title.get_width()//2 - 10, 40))
+        
+        # 绘制带描边的标题
+        def draw_title_with_outline(text, pos, color=BLACK, outline_color=WHITE):
+            # 绘制描边
+            for dx, dy in [(-1,-1), (-1,1), (1,-1), (1,1)]:
+                outline = font.render(text, True, outline_color)
+                self.screen.blit(outline, (pos[0] + dx, pos[1] + dy))
+            # 绘制主文字
+            text_surface = font.render(text, True, color)
+            self.screen.blit(text_surface, pos)
+        
+        draw_title_with_outline("选择你的角色", (SCREEN_WIDTH//2 - title.get_width()//2, 50))
         
         for i, character in enumerate(self.characters):
+            # 添加角色信息背景
+            info_bg = pygame.Surface((character.width, character.height))
+            info_bg.fill(WHITE)
+            info_bg.set_alpha(180)  # 设置半透明
+            self.screen.blit(info_bg, (50 + i * 250, 150))
+            
+            # 绘制角色
             character.draw(self.screen, 50 + i * 250, 150)
 
     def draw_battle(self):
         # 绘制玩家属性
+        # 添加属性信息背景
+        attr_bg = pygame.Surface((200, 150))
+        attr_bg.fill(WHITE)
+        attr_bg.set_alpha(180)
+        self.screen.blit(attr_bg, (10, 10))
+        
         self.player.draw(self.screen)
         self.player.draw_health_bar(self.screen, 10, 150, 200, 20)
         
         # 绘制怪物
         if self.monster:
+            # 添加怪物信息背景
+            monster_bg = pygame.Surface((self.monster.width, self.monster.height))
+            monster_bg.fill(WHITE)
+            monster_bg.set_alpha(180)
+            self.screen.blit(monster_bg, (500, 100))
+            
             self.monster.draw(self.screen, 500, 100)
             # 绘制怪物血条
             pygame.draw.rect(self.screen, RED, (500, 80, 150, 10))
             current_width = int(150 * (self.monster.health / self.monster.max_health))
             pygame.draw.rect(self.screen, GREEN, (500, 80, current_width, 10))
-            
-            # 显示怪物状态
-            font = get_font(20)
-            if self.monster.frozen:
-                frozen_text = font.render("冰冻中", True, BLUE)
-                self.screen.blit(frozen_text, (500, 310))
         
-        # 绘制手牌
-        for i, card in enumerate(self.player_hand):
-            if card != self.player.dragging_card:
-                card.draw(self.screen, 50 + i * 120, 400)
-        
-        # 绘制正在拖动的卡牌
-        if self.player.dragging_card and self.player.drag_start_pos:
-            self.player.dragging_card.draw(self.screen, 
-                                         self.player.drag_start_pos[0] - 50,
-                                         self.player.drag_start_pos[1] - 75)
-
         # 显示回合信息
-        font = get_font(24)
-        turn_text = font.render("你的回合" if self.player_turn else "怪物回合", True, BLACK)
-        self.screen.blit(turn_text, (SCREEN_WIDTH//2 - 50, 50))
+        font_large = get_font(24)
+        font_small = get_font(14) # 用于说明文字的较小字体
+        turn_text = font_large.render("你的回合" if self.player_turn else "怪物回合", True, BLACK)
+        turn_bg = pygame.Surface((turn_text.get_width() + 20, turn_text.get_height() + 10))
+        turn_bg.fill(WHITE)
+        turn_bg.set_alpha(180)
+        self.screen.blit(turn_bg, (SCREEN_WIDTH//2 - turn_text.get_width()//2 - 10, 40))
+        self.screen.blit(turn_text, (SCREEN_WIDTH//2 - turn_text.get_width()//2, 50))
 
-        # 显示效果状态
-        if self.player.thunder_effect:
-            thunder_text = font.render(f"雷属性效果: {self.player.thunder_duration}回合", True, BLUE)
-            self.screen.blit(thunder_text, (10, 350))
+        # 显示击败哥布林数量
+        defeated_text = font_small.render(f"已击败哥布林: {self.goblins_defeated}", True, BLACK)
+        defeated_bg = pygame.Surface((defeated_text.get_width() + 10, defeated_text.get_height() + 5))
+        defeated_bg.fill(WHITE)
+        defeated_bg.set_alpha(180)
+        self.screen.blit(defeated_bg, (SCREEN_WIDTH - defeated_text.get_width() - 20, 10))
+        self.screen.blit(defeated_text, (SCREEN_WIDTH - defeated_text.get_width() - 15, 12))
 
-        # 绘制抽卡按钮
-        pygame.draw.rect(self.screen, BLUE, self.draw_card_button)
-        font = get_font(20)
-        draw_text = font.render("抽卡", True, WHITE)
-        text_rect = draw_text.get_rect(center=self.draw_card_button.center)
-        self.screen.blit(draw_text, text_rect)
+        # 绘制事件按钮及说明
+        button_colors = {
+            'risk': (255, 0, 0),      # 红色
+            'balance': (255, 165, 0),  # 橙色
+            'safe': (0, 255, 0),      # 绿色
+            'all_in': (128, 0, 128),  # 紫色
+            'scratch': (0, 0, 255)    # 蓝色
+        }
+        
+        button_texts = {
+            'risk': "风险型",
+            'balance': "均衡型",
+            'safe': "稳健型",
+            'all_in': "梭哈",
+            'scratch': "刮痧"
+        }
+        
+        button_descriptions = {
+            'risk': ["75%几率自身-30HP", "25%几率怪物-50HP"],
+            'balance': ["50%几率自身-20HP", "50%几率怪物-20HP"],
+            'safe': ["25%几率自身-10HP", "75%几率怪物-10HP"],
+            'all_in': ["90%几率自身-50HP", "10%几率怪物-100HP"],
+            'scratch': ["100%几率怪物-1HP"]
+        }
+        
+        for event_type, button in self.event_buttons.items():
+            # 绘制按钮背景
+            pygame.draw.rect(self.screen, button_colors[event_type], button)
+            pygame.draw.rect(self.screen, BLACK, button, 2)
+            
+            # 绘制按钮文字
+            text = font_large.render(button_texts[event_type], True, WHITE)
+            text_rect = text.get_rect(center=button.center)
+            self.screen.blit(text, text_rect)
+            
+            # 绘制按钮说明 (支持换行)
+            desc_lines = button_descriptions[event_type]
+            line_y_offset = 0
+            for line in desc_lines:
+                desc_text_surface = font_small.render(line, True, BLACK)
+                desc_text_rect = desc_text_surface.get_rect(center=(button.centerx, button.bottom + 20 + line_y_offset))
+                
+                # 添加说明文字背景
+                desc_bg_width = desc_text_surface.get_width() + 10
+                desc_bg_height = desc_text_surface.get_height() + 4
+                desc_bg = pygame.Surface((desc_bg_width, desc_bg_height))
+                desc_bg.fill(WHITE)
+                desc_bg.set_alpha(200) # 设置半透明
+                self.screen.blit(desc_bg, (desc_text_rect.left - 5, desc_text_rect.top - 2))
+                self.screen.blit(desc_text_surface, desc_text_rect)
+                line_y_offset += font_small.get_height() # 每行向下偏移字体高度
 
     def draw_buff_selection(self):
         font = get_font(36)
         title = font.render("选择增益效果", True, BLACK)
-        self.screen.blit(title, (SCREEN_WIDTH//2 - 100, 50))
+        # 添加标题背景
+        title_bg = pygame.Surface((title.get_width() + 20, title.get_height() + 10))
+        title_bg.fill(WHITE)
+        title_bg.set_alpha(200)
+        self.screen.blit(title_bg, (SCREEN_WIDTH//2 - title.get_width()//2 - 10, 40))
+        self.screen.blit(title, (SCREEN_WIDTH//2 - title.get_width()//2, 50))
         
         # 绘制增益卡牌
         for i, card in enumerate(self.buff_cards):
-            # 绘制卡牌背景
-            pygame.draw.rect(self.screen, WHITE, (50 + i * 250, 200, card.width, card.height))
-            pygame.draw.rect(self.screen, BLACK, (50 + i * 250, 200, card.width, card.height), 2)
+            # 添加卡牌背景
+            card_bg = pygame.Surface((card.width, card.height))
+            card_bg.fill(WHITE)
+            card_bg.set_alpha(180)
+            self.screen.blit(card_bg, (50 + i * 250, 200))
             
             # 绘制卡牌信息
             font = get_font(20)
@@ -510,9 +674,25 @@ class Game:
             self.screen.blit(hint_text, (55 + i * 250, 280))
 
     def draw_game_over(self):
-        font = get_font(48)
-        text = font.render("游戏结束", True, RED)
-        self.screen.blit(text, (SCREEN_WIDTH//2 - 100, SCREEN_HEIGHT//2))
+        font_large = get_font(48)
+        font_medium = get_font(30)
+        font_small = get_font(24)
+
+        text = font_large.render("游戏结束", True, RED)
+        text_rect = text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 50))
+        self.screen.blit(text, text_rect)
+
+        # 显示最终击败哥布林数量
+        score_text = font_medium.render(f"最终击败哥布林: {self.goblins_defeated}", True, BLACK)
+        score_rect = score_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 10))
+        self.screen.blit(score_text, score_rect)
+
+        # 绘制重新开始按钮
+        pygame.draw.rect(self.screen, GREEN, self.restart_button) # 绿色按钮
+        pygame.draw.rect(self.screen, BLACK, self.restart_button, 2) # 黑色边框
+        restart_text = font_small.render("重新开始", True, BLACK)
+        restart_text_rect = restart_text.get_rect(center=self.restart_button.center)
+        self.screen.blit(restart_text, restart_text_rect)
 
     def run(self):
         while self.running:
